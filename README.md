@@ -1,4 +1,4 @@
-<![CDATA[<div align="center">
+<div align="center">
 
 # 🗺️ MY-GIG — HyperLocal Gig Map
 
@@ -86,8 +86,8 @@ Services (Auth + Database)
 Firestore (Cloud Backend)
 ```
 
-**State Management:** `Provider` + `ChangeNotifier`  
-**Backend:** Firebase (Auth, Firestore, Storage)  
+**State Management:** `Provider` + `ChangeNotifier`
+**Backend:** Firebase (Auth, Firestore, Storage)
 **Maps:** OpenStreetMap via `flutter_map` + `latlong2`
 
 ---
@@ -173,9 +173,9 @@ HyperLocal Gig/
 
 Before you begin, ensure you have the following installed:
 
-- **Flutter SDK** `>=3.10.4` → [Install Flutter](https://docs.flutter.dev/get-started/install)
+- **Flutter SDK** `>=3.10.4` — [Install Flutter](https://docs.flutter.dev/get-started/install)
 - **Dart SDK** `>=3.10.4` (bundled with Flutter)
-- **Firebase CLI** → [Install Firebase CLI](https://firebase.google.com/docs/cli)
+- **Firebase CLI** — [Install Firebase CLI](https://firebase.google.com/docs/cli)
 - **Android Studio** or **VS Code** with Flutter/Dart plugins
 - A **Firebase project** with Firestore, Auth, and Storage enabled
 - **Git** for version control
@@ -230,9 +230,9 @@ flutterfire configure
 
 In your Firebase Console, enable:
 
-- ✅ **Authentication** → Email/Password and Phone sign-in providers
-- ✅ **Cloud Firestore** → Create a database (start in test mode or deploy the included rules)
-- ✅ **Firebase Storage** → Enable for avatar uploads
+- ✅ **Authentication** — Email/Password and Phone sign-in providers
+- ✅ **Cloud Firestore** — Create a database (start in test mode or deploy the included rules)
+- ✅ **Firebase Storage** — Enable for avatar uploads
 
 ### 5. Deploy Firestore Security Rules
 
@@ -340,7 +340,8 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 ## 👨‍💻 Author
 
-**Shubham Bhayaje**  
+**Shubham Bhayaje**
+
 GitHub: [@Shubham-Bhayaje](https://github.com/Shubham-Bhayaje)
 
 ---
@@ -352,4 +353,3 @@ GitHub: [@Shubham-Bhayaje](https://github.com/Shubham-Bhayaje)
 Built with ❤️ using Flutter & Firebase
 
 </div>
-]]>
