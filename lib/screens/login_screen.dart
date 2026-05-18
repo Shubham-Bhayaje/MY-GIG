@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import '../models/user_model.dart';
 import '../widgets/glass_card.dart';
+import '../services/notification_service.dart';
 import 'main_shell.dart';
 import 'selfie_verification_screen.dart';
 
@@ -586,6 +587,12 @@ class _LoginScreenState extends State<LoginScreen>
         phone: _phoneController.text,
         uid: authService.uid,
       );
+
+      // Initialize FCM for the logged-in user
+      if (authService.uid != null) {
+        NotificationService().init(authService.uid!);
+        NotificationService().subscribeToTopic('new_gigs');
+      }
 
       if (_isLogin) {
         // Existing user → go straight to app

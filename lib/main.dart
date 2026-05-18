@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
@@ -8,45 +9,64 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/app_state.dart';
 import 'services/auth_service.dart';
+import 'services/notification_service.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/main_shell.dart';
 
 void main() async {
-  runZonedGuarded(() async {
-    WidgetsFlutterBinding.ensureInitialized();
-    
-    // Initialize Firebase
-    await Firebase.initializeApp();
-    
-    // Catch Flutter framework errors
-    FlutterError.onError = (FlutterErrorDetails details) {
-      FlutterError.presentError(details);
-      debugPrint('[FLUTTER ERROR] ${details.exceptionAsString()}');
-    };
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
 
-    // Catch errors that happen outside the Flutter context
-    PlatformDispatcher.instance.onError = (error, stack) {
-      debugPrint('[PLATFORM ERROR] $error');
-      return true;
-    };
+      // Initialize Firebase
+      if (kIsWeb) {
+        await Firebase.initializeApp(
+          options: const FirebaseOptions(
+            apiKey: 'AIzaSyCXrXhZMBGfNIDE1rAgTryQvG-IFuTlK1A',
+            appId: '1:850386777127:android:057c2fe08aa58d50790a02',
+            messagingSenderId: '850386777127',
+            projectId: 'hyperlocalgig',
+            storageBucket: 'hyperlocalgig.firebasestorage.app',
+          ),
+        );
+      } else {
+        await Firebase.initializeApp();
+      }
 
-    // Global Error Screen
-    ErrorWidget.builder = (FlutterErrorDetails details) {
-      return const GlobalErrorScreen();
-    };
-    
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        systemNavigationBarColor: AppColors.primaryDark,
-        systemNavigationBarIconBrightness: Brightness.light,
-      ),
-    );
-    runApp(const HyperLocalGigApp());
-  }, (error, stackTrace) {
-    debugPrint('[ZONED ERROR] $error');
-  });
+      // Register FCM background handler
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+      // Catch Flutter framework errors
+      FlutterError.onError = (FlutterErrorDetails details) {
+        FlutterError.presentError(details);
+        debugPrint('[FLUTTER ERROR] ${details.exceptionAsString()}');
+      };
+
+      // Catch errors that happen outside the Flutter context
+      PlatformDispatcher.instance.onError = (error, stack) {
+        debugPrint('[PLATFORM ERROR] $error');
+        return true;
+      };
+
+      // Global Error Screen
+      ErrorWidget.builder = (FlutterErrorDetails details) {
+        return const GlobalErrorScreen();
+      };
+
+      SystemChrome.setSystemUIOverlayStyle(
+        const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          systemNavigationBarColor: AppColors.primaryDark,
+          systemNavigationBarIconBrightness: Brightness.light,
+        ),
+      );
+      runApp(const HyperLocalGigApp());
+    },
+    (error, stackTrace) {
+      debugPrint('[ZONED ERROR] $error');
+    },
+  );
 }
 
 class GlobalErrorScreen extends StatelessWidget {
@@ -75,10 +95,7 @@ class GlobalErrorScreen extends StatelessWidget {
               SizedBox(height: 8),
               Text(
                 'Please restart the app.',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
               ),
             ],
           ),
@@ -139,6 +156,11 @@ class _AuthGateState extends State<AuthGate> {
           phone: user.phoneNumber ?? '',
           uid: user.uid,
         );
+
+        // Initialize FCM for this user
+        NotificationService().init(user.uid);
+        // Subscribe to 'new_gigs' topic so all workers get notified
+        NotificationService().subscribeToTopic('new_gigs');
       }
     } catch (e) {
       if (mounted) {

@@ -18,7 +18,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
-  
+
   final List<Widget> _screens = const [
     HomeScreen(),
     ActivityScreen(),
@@ -31,10 +31,7 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.primaryDark,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _screens),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
@@ -48,7 +45,7 @@ class _MainShellState extends State<MainShell> {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) {
+        pageBuilder: (context, animation, child) {
           return FadeTransition(
             opacity: animation,
             child: const PostJobScreen(),
@@ -65,7 +62,12 @@ class _MainShellState extends State<MainShell> {
     final bottomPad = MediaQuery.of(context).padding.bottom;
 
     return Container(
-      padding: EdgeInsets.only(left: 12, right: 12, top: 10, bottom: bottomPad + 6),
+      padding: EdgeInsets.only(
+        left: 12,
+        right: 12,
+        top: 10,
+        bottom: bottomPad + 6,
+      ),
       decoration: const BoxDecoration(
         color: Color(0xFF050505),
         border: Border(top: BorderSide(color: Color(0xFF1A1A1A), width: 0.5)),
@@ -75,34 +77,87 @@ class _MainShellState extends State<MainShell> {
         children: isPoster
             ? [
                 // Poster: 5 items with center FAB
-                _buildNavItem(0, Icons.home_rounded, Icons.home_outlined, 'Home'),
-                _buildNavItem(1, Icons.campaign_rounded, Icons.campaign_outlined, 'My Gigs'),
+                _buildNavItem(
+                  0,
+                  Icons.home_rounded,
+                  Icons.home_outlined,
+                  'Home',
+                ),
+                _buildNavItem(
+                  1,
+                  Icons.campaign_rounded,
+                  Icons.campaign_outlined,
+                  'My Gigs',
+                ),
                 GestureDetector(
                   onTap: _onPostTap,
                   child: Container(
-                    width: 48, height: 48,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       color: AppColors.accentCyan,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Icon(Icons.add_rounded, size: 22, color: Color(0xFF050505)),
+                    child: const Icon(
+                      Icons.add_rounded,
+                      size: 22,
+                      color: Color(0xFF050505),
+                    ),
                   ),
                 ),
-                _buildNavItem(3, Icons.notifications_rounded, Icons.notifications_outlined, 'Alerts', showBadge: true),
-                _buildNavItem(4, Icons.person_rounded, Icons.person_outline_rounded, 'Profile'),
+                _buildNavItem(
+                  3,
+                  Icons.notifications_rounded,
+                  Icons.notifications_outlined,
+                  'Alerts',
+                  showBadge: true,
+                ),
+                _buildNavItem(
+                  4,
+                  Icons.person_rounded,
+                  Icons.person_outline_rounded,
+                  'Profile',
+                ),
               ]
             : [
                 // Worker: 4 items, evenly distributed
-                _buildNavItem(0, Icons.home_rounded, Icons.home_outlined, 'Home'),
-                _buildNavItem(1, Icons.work_rounded, Icons.work_outline_rounded, 'Activity'),
-                _buildNavItem(3, Icons.notifications_rounded, Icons.notifications_outlined, 'Alerts', showBadge: true),
-                _buildNavItem(4, Icons.person_rounded, Icons.person_outline_rounded, 'Profile'),
+                _buildNavItem(
+                  0,
+                  Icons.home_rounded,
+                  Icons.home_outlined,
+                  'Home',
+                ),
+                _buildNavItem(
+                  1,
+                  Icons.work_rounded,
+                  Icons.work_outline_rounded,
+                  'Activity',
+                ),
+                _buildNavItem(
+                  3,
+                  Icons.notifications_rounded,
+                  Icons.notifications_outlined,
+                  'Alerts',
+                  showBadge: true,
+                ),
+                _buildNavItem(
+                  4,
+                  Icons.person_rounded,
+                  Icons.person_outline_rounded,
+                  'Profile',
+                ),
               ],
       ),
     );
   }
 
-  Widget _buildNavItem(int index, IconData activeIcon, IconData icon, String label, {bool showBadge = false}) {
+  Widget _buildNavItem(
+    int index,
+    IconData activeIcon,
+    IconData icon,
+    String label, {
+    bool showBadge = false,
+  }) {
     final isActive = _currentIndex == index;
     final state = context.watch<AppState>();
     final hasUnread = showBadge && state.unreadNotificationCount > 0;
@@ -114,7 +169,9 @@ class _MainShellState extends State<MainShell> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.accentCyan.withValues(alpha: 0.1) : Colors.transparent,
+          color: isActive
+              ? AppColors.accentCyan.withValues(alpha: 0.1)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
@@ -130,9 +187,11 @@ class _MainShellState extends State<MainShell> {
                 ),
                 if (hasUnread)
                   Positioned(
-                    right: -2, top: -2,
+                    right: -2,
+                    top: -2,
                     child: Container(
-                      width: 8, height: 8,
+                      width: 8,
+                      height: 8,
                       decoration: const BoxDecoration(
                         color: AppColors.error,
                         shape: BoxShape.circle,
@@ -152,7 +211,7 @@ class _MainShellState extends State<MainShell> {
                   letterSpacing: -0.2,
                 ),
               ),
-            ]
+            ],
           ],
         ),
       ),

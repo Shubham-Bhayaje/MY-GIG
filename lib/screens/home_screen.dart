@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -48,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        setState(() => _locationLoading = false);
+        _markLocationUnavailable();
         return;
       }
 
@@ -57,12 +55,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          setState(() => _locationLoading = false);
+          _markLocationUnavailable();
           return;
         }
       }
       if (permission == LocationPermission.deniedForever) {
-        setState(() => _locationLoading = false);
+        _markLocationUnavailable();
         return;
       }
 
@@ -80,6 +78,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _userLocation = userLatLng;
           _locationLoading = false;
         });
+
+        // Push real GPS into AppState so distance calculations update
+        if (mounted) {
+          context.read<AppState>().updateMapCenter(
+            position.latitude,
+            position.longitude,
+          );
+        }
 
         // Move the map camera to the user's real location
         try {
@@ -100,18 +106,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ? p.subLocality!
                 : (p.locality ?? '');
             final city = p.locality ?? '';
-            final name = area == city
-                ? '$city, ${p.country ?? ''}'
-                : '$area, $city';
+            final parts = <String>[
+              if (area.trim().isNotEmpty) area.trim(),
+              if (city.trim().isNotEmpty && city.trim() != area.trim())
+                city.trim(),
+            ];
+            final name = parts.isNotEmpty
+                ? parts.join(', ')
+                : 'Current location';
             setState(() => _locationName = name);
           }
         } catch (_) {}
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _locationLoading = false);
-      }
+      _markLocationUnavailable();
     }
+  }
+
+  void _markLocationUnavailable() {
+    if (!mounted) return;
+    setState(() {
+      _locationLoading = false;
+      _locationName = 'Location unavailable';
+    });
   }
 
   @override
@@ -144,8 +161,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     if (state.isWorkerMode) ...[
                       // WORKER VIEW — find & accept gigs
                       _buildSearchBar(state),
-                      _buildCategoryRow(state),
-                      _buildControls(state),
+                      _buildFilterPanel(state),
                       Expanded(
                         child: state.isMapView
                             ? _buildMapView(state)
@@ -153,9 +169,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ] else ...[
                       // POSTER VIEW — manage your posted gigs
-                      Expanded(
-                        child: _buildPosterView(state),
-                      ),
+                      Expanded(child: _buildPosterView(state)),
                     ],
                   ],
                 ),
@@ -167,9 +181,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   bottom: 16,
                   left: 0,
                   right: 0,
-                  child: Center(
-                    child: _buildJobCountBadge(state),
-                  ),
+                  child: Center(child: _buildJobCountBadge(state)),
                 ),
             ],
           ),
@@ -207,12 +219,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   children: [
                     Text(
                       greeting,
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w400),
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                     const SizedBox(height: 1),
                     Text(
                       user.name.isNotEmpty ? user.name : 'Guest',
-                      style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: -0.3),
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.3,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -228,8 +251,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildToggleBtn('Worker', state.isWorkerMode, () => state.setWorkerMode(true)),
-                    _buildToggleBtn('Poster', !state.isWorkerMode, () => state.setWorkerMode(false)),
+                    _buildToggleBtn(
+                      'Worker',
+                      state.isWorkerMode,
+                      () => state.setWorkerMode(true),
+                    ),
+                    _buildToggleBtn(
+                      'Poster',
+                      !state.isWorkerMode,
+                      () => state.setWorkerMode(false),
+                    ),
                   ],
                 ),
               ),
@@ -241,12 +272,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Row(
               children: [
                 const SizedBox(width: 48),
-                Icon(Icons.near_me_rounded, size: 11, color: AppColors.accentCyan),
+                Icon(
+                  Icons.near_me_rounded,
+                  size: 11,
+                  color: AppColors.accentCyan,
+                ),
                 const SizedBox(width: 4),
-                Text(
-                  _locationName,
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 12, letterSpacing: -0.1),
-                  overflow: TextOverflow.ellipsis,
+                Expanded(
+                  child: Text(
+                    _locationName,
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                      letterSpacing: -0.1,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -268,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: isActive ? AppColors.accentCyan : Colors.transparent,
           borderRadius: BorderRadius.circular(9),
@@ -279,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             color: isActive ? Color(0xFF050505) : AppColors.textMuted,
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            letterSpacing: -0.1,
+            letterSpacing: 0,
           ),
         ),
       ),
@@ -288,49 +329,78 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildSearchBar(AppState state) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: GlassCard(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        borderRadius: 14,
-        child: Row(
-          children: [
-            const SizedBox(width: 8),
-            Icon(Icons.search_rounded, color: AppColors.textMuted, size: 22),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: _searchController,
-                onChanged: state.setSearchQuery,
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-                decoration: const InputDecoration(
-                  hintText: 'Search for gigs nearby...',
-                  hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 14),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  fillColor: Colors.transparent,
-                  filled: false,
-                  contentPadding: EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: GlassCard(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            borderRadius: 14,
+            child: Row(
+              children: [
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.search_rounded,
+                  color: AppColors.textMuted,
+                  size: 22,
                 ),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: state.setSearchQuery,
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 14,
+                    ),
+                    decoration: const InputDecoration(
+                      hintText: 'Search for gigs nearby...',
+                      hintStyle: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 14,
+                      ),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      fillColor: Colors.transparent,
+                      filled: false,
+                      contentPadding: EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                // Filter button
+                IconButton(
+                  tooltip: _showSearchFilters ? 'Hide filters' : 'Show filters',
+                  onPressed: () {
+                    setState(() => _showSearchFilters = !_showSearchFilters);
+                  },
+                  icon: Icon(
+                    Icons.tune_rounded,
+                    color: _showSearchFilters
+                        ? AppColors.accentCyan
+                        : AppColors.textMuted,
+                    size: 20,
+                  ),
+                ),
+              ],
             ),
-            // Filter button
-            IconButton(
-              onPressed: () {
-                setState(() => _showSearchFilters = !_showSearchFilters);
-              },
-              icon: Icon(
-                Icons.tune_rounded,
-                color: _showSearchFilters
-                    ? AppColors.accentCyan
-                    : AppColors.textMuted,
-                size: 20,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(delay: 100.ms, duration: 400.ms).slideY(begin: -0.1, duration: 400.ms);
+          ),
+        )
+        .animate()
+        .fadeIn(delay: 100.ms, duration: 400.ms)
+        .slideY(begin: -0.1, duration: 400.ms);
+  }
+
+  Widget _buildFilterPanel(AppState state) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      child: _showSearchFilters
+          ? Column(
+              key: const ValueKey('filters-visible'),
+              mainAxisSize: MainAxisSize.min,
+              children: [_buildCategoryRow(state), _buildControls(state)],
+            )
+          : const SizedBox.shrink(key: ValueKey('filters-hidden')),
+    );
   }
 
   Widget _buildCategoryRow(AppState state) {
@@ -340,11 +410,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         children: [
-          CategoryChip(
-            category: JobCategory.teaching,
-            isSelected: false,
-            onTap: () {},
-          ),
           ...JobCategory.values.map((cat) {
             return Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -361,7 +426,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             );
           }),
-        ].skip(1).toList(),
+        ],
       ),
     ).animate().fadeIn(delay: 200.ms, duration: 400.ms);
   }
@@ -371,51 +436,40 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       child: Row(
         children: [
-          // Result count
-          Flexible(
-            child: Text(
-              state.selectedRadiusIndex == 3
-                  ? '${state.filteredJobs.length} gigs across India'
-                  : '${state.filteredJobs.length} gigs nearby',
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+          Expanded(child: _buildRadiusSelector(state)),
           const SizedBox(width: 8),
-          // Radius selector
-          _buildRadiusSelector(state),
-          const SizedBox(width: 8),
-          // View toggle
-          GlassCard(
-            padding: const EdgeInsets.all(0),
-            borderRadius: 10,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildViewToggleButton(
-                  Icons.map_outlined,
-                  state.isMapView,
-                  () => state.setMapView(true),
-                ),
-                _buildViewToggleButton(
-                  Icons.list_rounded,
-                  !state.isMapView,
-                  () => state.setMapView(false),
-                ),
-              ],
-            ),
-          ),
+          _buildViewModeToggle(state),
         ],
       ),
     ).animate().fadeIn(delay: 300.ms, duration: 400.ms);
   }
 
+
+
+  Widget _buildViewModeToggle(AppState state) {
+    return GlassCard(
+      padding: const EdgeInsets.all(0),
+      borderRadius: 10,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildViewToggleButton(
+            Icons.map_outlined,
+            state.isMapView,
+            () => state.setMapView(true),
+          ),
+          _buildViewToggleButton(
+            Icons.list_rounded,
+            !state.isMapView,
+            () => state.setMapView(false),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRadiusSelector(AppState state) {
-    final radii = ['1km', '5km', '10km', '🇮🇳 All'];
+    final radii = ['1 km', '5 km', '10 km', 'All'];
     return GlassCard(
       padding: const EdgeInsets.all(2),
       borderRadius: 10,
@@ -427,12 +481,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             onTap: () => state.setSelectedRadius(index),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               decoration: BoxDecoration(
                 color: isSelected
                     ? (index == 3
-                        ? AppColors.accentPurple.withValues(alpha: 0.2)
-                        : AppColors.accentCyan.withValues(alpha: 0.2))
+                          ? AppColors.accentPurple.withValues(alpha: 0.2)
+                          : AppColors.accentCyan.withValues(alpha: 0.2))
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -440,7 +494,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 radii[index],
                 style: TextStyle(
                   color: isSelected
-                      ? (index == 3 ? AppColors.accentPurple : AppColors.accentCyan)
+                      ? (index == 3
+                            ? AppColors.accentPurple
+                            : AppColors.accentCyan)
                       : AppColors.textMuted,
                   fontSize: 11,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
@@ -453,7 +509,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildViewToggleButton(IconData icon, bool isActive, VoidCallback onTap) {
+  Widget _buildViewToggleButton(
+    IconData icon,
+    bool isActive,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -482,7 +542,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
     final jobs = state.filteredJobs;
     // Use real GPS location if available, fallback to mock
-    final mapCenter = _userLocation ?? 
+    final mapCenter =
+        _userLocation ??
         LatLng(state.currentUser.latitude, state.currentUser.longitude);
 
     return ClipRRect(
@@ -504,7 +565,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             children: [
               // Dark map tiles (CartoDB Dark Matter)
               TileLayer(
-                urlTemplate: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+                urlTemplate:
+                    'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
                 userAgentPackageName: 'com.hyperlocalgig.app',
                 maxZoom: 19,
               ),
@@ -535,10 +597,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: AppColors.accentCyan,
-                                border: Border.all(color: Colors.white, width: 2.5),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2.5,
+                                ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.accentCyan.withValues(alpha: 0.5),
+                                    color: AppColors.accentCyan.withValues(
+                                      alpha: 0.5,
+                                    ),
                                     blurRadius: 12,
                                     spreadRadius: 2,
                                   ),
@@ -552,18 +619,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   // Gig markers
                   ...jobs.map((job) {
-                    // Build distance label
-                    final distLabel = job.distanceKm < 1
-                        ? '${(job.distanceKm * 1000).toInt()}m'
-                        : '${job.distanceKm.toStringAsFixed(1)}km';
-                    // Truncate title for pin
-                    final shortTitle = job.title.length > 18
-                        ? '${job.title.substring(0, 16)}…'
-                        : job.title;
-
                     return Marker(
                       point: LatLng(job.latitude, job.longitude),
-                      width: 90,
+                      width: 96,
                       height: 40,
                       child: GestureDetector(
                         onTap: () {
@@ -575,10 +633,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           );
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFF111111),
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                               color: Colors.white.withValues(alpha: 0.08),
                               width: 1,
@@ -591,21 +652,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ),
                             ],
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(job.category.icon, size: 14, color: job.category.color),
-                              const SizedBox(width: 4),
-                              Text(
-                                '₹${job.payRate.toInt()}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  job.category.icon,
+                                  size: 14,
+                                  color: job.category.color,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 4),
+                                Text(
+                                  '\u20b9${job.payRate.toInt()}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -683,7 +751,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               left: 12,
               bottom: 16,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.cardBg,
                   borderRadius: BorderRadius.circular(12),
@@ -747,11 +818,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ],
         ),
-        child: Icon(
-          icon,
-          size: 20,
-          color: color ?? AppColors.textSecondary,
-        ),
+        child: Icon(icon, size: 20, color: color ?? AppColors.textSecondary),
       ),
     );
   }
@@ -785,10 +852,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             const SizedBox(height: 8),
             const Text(
               'Try adjusting your search or filters',
-              style: TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 14),
             ),
           ],
         ),
@@ -830,18 +894,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             itemBuilder: (context, index) {
               final job = jobs[index];
               return JobCard(
-                job: job,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => JobDetailScreen(job: job),
-                    ),
-                  );
-                },
-              ).animate()
-                .fadeIn(delay: (50 * index).ms, duration: 300.ms)
-                .slideX(begin: 0.05, duration: 300.ms);
+                    job: job,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => JobDetailScreen(job: job),
+                        ),
+                      );
+                    },
+                  )
+                  .animate()
+                  .fadeIn(delay: (50 * index).ms, duration: 300.ms)
+                  .slideX(begin: 0.05, duration: 300.ms);
             },
           ),
         ),
@@ -850,64 +915,79 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildJobCountBadge(AppState state) {
+    final locationLabel = state.selectedRadiusIndex == 3
+        ? 'across India'
+        : 'within ${state.selectedRadius.toInt()}km';
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.cardBg.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: AppColors.divider, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.cardBg.withValues(alpha: 0.95),
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(color: AppColors.divider, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.4),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.accentCyan,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.accentCyan.withValues(alpha: 0.5),
-                  blurRadius: 6,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.accentCyan,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.accentCyan.withValues(alpha: 0.5),
+                      blurRadius: 6,
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '${state.filteredJobs.length} active gigs $locationLabel',
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          Text(
-            '${state.filteredJobs.length} active gigs within ${state.selectedRadius.toInt()}km',
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.2,
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(delay: 500.ms, duration: 400.ms).slideY(begin: 0.3, duration: 400.ms);
+        )
+        .animate()
+        .fadeIn(delay: 500.ms, duration: 400.ms)
+        .slideY(begin: 0.3, duration: 400.ms);
   }
 
   // ===== POSTER VIEW =====
   Widget _buildPosterView(AppState state) {
     final myGigs = state.myPostedJobs;
-    final activeGigs = myGigs.where((j) => j.status == JobStatus.accepted || j.status == JobStatus.inProgress).length;
-    final completedGigs = myGigs.where((j) => j.status == JobStatus.completed).length;
+    final activeGigs = myGigs
+        .where(
+          (j) =>
+              j.status == JobStatus.accepted ||
+              j.status == JobStatus.inProgress,
+        )
+        .length;
+    final completedGigs = myGigs
+        .where((j) => j.status == JobStatus.completed)
+        .length;
     final totalSpent = myGigs.fold<double>(0, (sum, j) => sum + j.payRate);
 
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      children: [
-        const SizedBox(height: 12),
+    final recentGigs = myGigs.take(3).toList();
 
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      children: [
         // Compact analytics cards
         Row(
           children: [
@@ -919,18 +999,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ],
         ),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
 
         // Large clean CTA
         GestureDetector(
           onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const PostJobScreen()),
-            );
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const PostJobScreen()));
           },
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
               color: AppColors.accentCyan,
               borderRadius: BorderRadius.circular(14),
@@ -954,7 +1034,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
 
-        const SizedBox(height: 28),
+        const SizedBox(height: 16),
 
         // Total spent card
         Container(
@@ -967,23 +1047,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: Row(
             children: [
               Container(
-                width: 40, height: 40,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: AppColors.surfaceLight,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.account_balance_wallet_outlined, size: 20, color: AppColors.textSecondary),
+                child: Icon(
+                  Icons.account_balance_wallet_outlined,
+                  size: 20,
+                  color: AppColors.textSecondary,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Total Budget Posted', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                    Text(
+                      'Total Budget Posted',
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       '\u20b9${totalSpent.toStringAsFixed(0)}',
-                      style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.3),
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.3,
+                      ),
                     ),
                   ],
                 ),
@@ -994,29 +1090,123 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
         const SizedBox(height: 24),
 
+        Row(
+          children: [
+            const Text(
+              'Recent Gigs',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${myGigs.length} total',
+              style: const TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (recentGigs.isEmpty)
+          _buildPosterEmptyGigsCard()
+        else
+          ...recentGigs.map(
+            (job) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _buildPosterJobCard(job, state),
+            ),
+          ),
+
+        const SizedBox(height: 20),
+
         // Quick tips for posters
         const Text(
           'Quick Tips',
-          style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: -0.3),
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.3,
+          ),
         ),
         const SizedBox(height: 12),
-        _buildTipCard(Icons.description_outlined, 'Write clear descriptions', 'Detailed gig descriptions attract 3x more applicants'),
+        _buildTipCard(
+          Icons.description_outlined,
+          'Write clear descriptions',
+          'Detailed gig descriptions attract 3x more applicants',
+        ),
         const SizedBox(height: 8),
-        _buildTipCard(Icons.location_on_outlined, 'Set accurate location', 'Workers nearby can find your gig faster'),
+        _buildTipCard(
+          Icons.location_on_outlined,
+          'Set accurate location',
+          'Workers nearby can find your gig faster',
+        ),
         const SizedBox(height: 8),
-        _buildTipCard(Icons.payments_outlined, 'Fair pricing', 'Competitive pay rates get filled 2x faster'),
+        _buildTipCard(
+          Icons.payments_outlined,
+          'Fair pricing',
+          'Competitive pay rates get filled 2x faster',
+        ),
 
         const SizedBox(height: 24),
       ],
     );
   }
 
-  Widget _buildTipCard(IconData icon, String title, String subtitle) {
+  Widget _buildPosterEmptyGigsCard() {
     return Container(
-      padding: const EdgeInsets.all(14),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.cardBg,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider, width: 0.5),
+      ),
+      child: const Row(
+        children: [
+          Icon(
+            Icons.work_outline_rounded,
+            size: 20,
+            color: AppColors.textMuted,
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'No gigs posted yet',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Post your first gig to start receiving applicants.',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTipCard(IconData icon, String title, String subtitle) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.divider, width: 0.5),
       ),
       child: Row(
@@ -1027,9 +1217,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(subtitle, style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                Text(
+                  subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1040,22 +1247,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildPosterStat(String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
       decoration: BoxDecoration(
         color: AppColors.cardBg,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.divider, width: 0.5),
       ),
       child: Column(
         children: [
           Text(
             value,
-            style: TextStyle(color: AppColors.textPrimary, fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.5),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             label,
-            style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w500),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -1088,20 +1308,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               Expanded(
                 child: Text(
                   job.title,
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   statusLabel,
-                  style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -1109,7 +1339,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(Icons.location_on_outlined, size: 13, color: AppColors.textMuted),
+              Icon(
+                Icons.location_on_outlined,
+                size: 13,
+                color: AppColors.textMuted,
+              ),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
@@ -1121,13 +1355,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               const SizedBox(width: 8),
               Text(
-                '₹${job.payRate.toInt()}',
-                style: TextStyle(color: AppColors.accentGreen, fontSize: 14, fontWeight: FontWeight.w700),
+                '\u20b9${job.payRate.toInt()}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.accentGreen,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
           // Show complete button for accepted gigs
-          if (job.status == JobStatus.accepted || job.status == JobStatus.inProgress) ...[
+          if (job.status == JobStatus.accepted ||
+              job.status == JobStatus.inProgress) ...[
             const SizedBox(height: 10),
             Row(
               children: [
@@ -1139,14 +1380,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       decoration: BoxDecoration(
                         color: AppColors.accentGreen.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.accentGreen.withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: AppColors.accentGreen.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.check_circle_outlined, color: AppColors.accentGreen, size: 16),
+                          Icon(
+                            Icons.check_circle_outlined,
+                            color: AppColors.accentGreen,
+                            size: 16,
+                          ),
                           SizedBox(width: 6),
-                          Text('Mark Complete', style: TextStyle(color: AppColors.accentGreen, fontSize: 12, fontWeight: FontWeight.w600)),
+                          Text(
+                            'Mark Complete',
+                            style: TextStyle(
+                              color: AppColors.accentGreen,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -1159,28 +1413,4 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     );
   }
-}
-
-
-class _PinPointerPainter extends CustomPainter {
-  final Color color;
-  _PinPointerPainter(this.color);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    final path = Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width / 2, size.height)
-      ..lineTo(size.width, 0)
-      ..close();
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -8,6 +8,7 @@ import '../core/theme/app_theme.dart';
 import '../models/job_model.dart';
 import '../providers/app_state.dart';
 import '../widgets/glass_card.dart';
+import 'chat_screen.dart';
 import 'login_screen.dart';
 
 class JobDetailScreen extends StatefulWidget {
@@ -534,7 +535,29 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                               ),
                             ),
                             OutlinedButton.icon(
-                              onPressed: () {},
+                              onPressed: () {
+                                final state = context.read<AppState>();
+                                if (!state.isLoggedIn) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Please log in to chat'),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                  return;
+                                }
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ChatScreen(
+                                      peerId: widget.job.posterId,
+                                      peerName: widget.job.posterName,
+                                      jobId: widget.job.id,
+                                      jobTitle: widget.job.title,
+                                    ),
+                                  ),
+                                );
+                              },
                               icon: const Icon(Icons.chat_outlined, size: 16),
                               label: const Text('Chat'),
                               style: OutlinedButton.styleFrom(

@@ -561,16 +561,225 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
         final job = doneGigs[index];
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
-          child: JobCard(
-            job: job,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => JobDetailScreen(job: job)),
-            ),
+          child: Column(
+            children: [
+              JobCard(
+                job: job,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => JobDetailScreen(job: job)),
+                ),
+              ),
+              // Rate Worker button — only if there are accepted workers
+              if (job.acceptedWorkerIds.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showRateWorkerDialog(context, state, job),
+                      icon: const Icon(Icons.star_rounded, size: 18),
+                      label: const Text('Rate Worker'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.accentYellow,
+                        side: BorderSide(
+                          color: AppColors.accentYellow.withValues(alpha: 0.4),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         );
       },
     );
+  }
+
+  void _showRateWorkerDialog(BuildContext context, AppState state, GigJob job) {
+    double selectedRating = 4.0;
+    bool submitting = false;
+    // Use first worker UID from the accepted list
+    final workerUid = job.acceptedWorkerIds.first;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Dialog(
+          backgroundColor: AppColors.cardBg,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: AppColors.accentYellow.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(
+                    Icons.star_rounded,
+                    color: AppColors.accentYellow,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Rate This Worker',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'How was the work on "${job.title}"?',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Star rating row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (i) {
+                    final starValue = i + 1.0;
+                    return GestureDetector(
+                      onTap: () => setDialogState(() => selectedRating = starValue),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Icon(
+                          starValue <= selectedRating
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
+                          color: starValue <= selectedRating
+                              ? AppColors.accentYellow
+                              : AppColors.textMuted,
+                          size: 40,
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _ratingLabel(selectedRating),
+                  style: TextStyle(
+                    color: AppColors.accentYellow,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          side: BorderSide(color: AppColors.divider),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: submitting
+                            ? null
+                            : () async {
+                                setDialogState(() => submitting = true);
+                                final success = await state.rateWorker(
+                                  workerUid,
+                                  selectedRating,
+                                );
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Row(
+                                        children: [
+                                          Icon(
+                                            success
+                                                ? Icons.check_circle
+                                                : Icons.error_outline,
+                                            color: success
+                                                ? AppColors.accentGreen
+                                                : AppColors.error,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            success
+                                                ? 'Rating submitted! ⭐'
+                                                : 'Failed to submit rating',
+                                          ),
+                                        ],
+                                      ),
+                                      backgroundColor: AppColors.surfaceLight,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accentYellow,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: submitting
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.black,
+                                ),
+                              )
+                            : const Text(
+                                'Submit',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _ratingLabel(double rating) {
+    if (rating <= 1) return 'Poor';
+    if (rating <= 2) return 'Below Average';
+    if (rating <= 3) return 'Average';
+    if (rating <= 4) return 'Good';
+    return 'Excellent';
   }
 
   // ===== SHARED =====

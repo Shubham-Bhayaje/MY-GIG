@@ -21,6 +21,58 @@ class JobCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('MMM d');
+    final categoryBadge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: job.category.color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(job.category.icon, size: 11, color: job.category.color),
+          const SizedBox(width: 4),
+          Text(
+            job.category.label,
+            style: TextStyle(
+              color: job.category.color,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+    final timeBadge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.schedule_rounded, size: 10, color: AppColors.textMuted),
+          const SizedBox(width: 3),
+          Text(
+            '${dateFormat.format(job.dateTime)} \u00B7 ${_formatDuration(job.duration)}',
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+    final payLabel = Text(
+      '\u20b9${job.payRate.toInt()}',
+      style: TextStyle(
+        color: AppColors.accentGreen,
+        fontWeight: FontWeight.w800,
+        fontSize: compact ? 17 : 19,
+      ),
+    );
 
     return GlassCard(
       onTap: onTap,
@@ -35,71 +87,15 @@ class JobCard extends StatelessWidget {
           // Header row: category badge + time + urgency
           Row(
             children: [
-              // Category tag
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: job.category.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      job.category.icon,
-                      size: 11,
-                      color: job.category.color,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      job.category.label,
-                      style: TextStyle(
-                        color: job.category.color,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+              Expanded(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [categoryBadge, timeBadge],
                 ),
               ),
-              const SizedBox(width: 6),
-              // Time badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.schedule_rounded,
-                      size: 10,
-                      color: AppColors.textMuted,
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      '${dateFormat.format(job.dateTime)} · ${_formatDuration(job.duration)}',
-                      style: const TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Spacer(),
-              // Pay
-              Text(
-                '₹${job.payRate.toInt()}',
-                style: TextStyle(
-                  color: AppColors.accentGreen,
-                  fontWeight: FontWeight.w800,
-                  fontSize: compact ? 17 : 19,
-                ),
-              ),
+              const SizedBox(width: 8),
+              payLabel,
             ],
           ),
 
@@ -153,7 +149,9 @@ class JobCard extends StatelessWidget {
                 ),
                 child: Center(
                   child: Text(
-                    job.posterName.isNotEmpty ? job.posterName[0].toUpperCase() : '?',
+                    job.posterName.isNotEmpty
+                        ? job.posterName[0].toUpperCase()
+                        : '?',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 11,
@@ -163,53 +161,62 @@ class JobCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  job.posterName,
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        job.posterName,
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.star_rounded,
+                      size: 12,
+                      color: AppColors.accentYellow,
+                    ),
+                    Text(
+                      ' ${job.posterRating.toStringAsFixed(1)}',
+                      style: const TextStyle(
+                        color: AppColors.accentYellow,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (showDistance) ...[
+                      const SizedBox(width: 10),
+                      Icon(
+                        Icons.near_me_rounded,
+                        size: 11,
+                        color: AppColors.accentCyan,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        '${job.distanceKm.toStringAsFixed(1)} km',
+                        style: const TextStyle(
+                          color: AppColors.accentCyan,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              const SizedBox(width: 4),
-              Icon(
-                Icons.star_rounded,
-                size: 12,
-                color: AppColors.accentYellow,
-              ),
-              Text(
-                ' ${job.posterRating.toStringAsFixed(1)}',
-                style: const TextStyle(
-                  color: AppColors.accentYellow,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              if (showDistance) ...[
-                const SizedBox(width: 10),
-                Icon(
-                  Icons.near_me_rounded,
-                  size: 11,
-                  color: AppColors.accentCyan,
-                ),
-                const SizedBox(width: 2),
-                Text(
-                  '${job.distanceKm.toStringAsFixed(1)} km',
-                  style: const TextStyle(
-                    color: AppColors.accentCyan,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-              const Spacer(),
+              const SizedBox(width: 8),
               // Accept Gig button
               if (job.status == JobStatus.posted)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.accentCyan.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
@@ -219,7 +226,9 @@ class JobCard extends StatelessWidget {
                     ),
                   ),
                   child: const Text(
-                    'Accept Gig',
+                    'Accept',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: AppColors.accentCyan,
                       fontSize: 11,
@@ -230,13 +239,18 @@ class JobCard extends StatelessWidget {
               // Status badge
               if (job.status != JobStatus.posted)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: job.status.color.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     job.status.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: job.status.color,
                       fontSize: 11,

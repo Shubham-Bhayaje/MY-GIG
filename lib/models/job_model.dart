@@ -61,6 +61,7 @@ class GigJob {
   final String posterAvatar;
   final DateTime createdAt;
   final double distanceKm;
+  final List<String> acceptedWorkerIds;
 
   const GigJob({
     required this.id,
@@ -85,6 +86,7 @@ class GigJob {
     this.posterAvatar = '',
     required this.createdAt,
     this.distanceKm = 0.0,
+    this.acceptedWorkerIds = const [],
   });
 
   GigJob copyWith({
@@ -110,6 +112,7 @@ class GigJob {
     String? posterAvatar,
     DateTime? createdAt,
     double? distanceKm,
+    List<String>? acceptedWorkerIds,
   }) {
     return GigJob(
       id: id ?? this.id,
@@ -134,6 +137,7 @@ class GigJob {
       posterAvatar: posterAvatar ?? this.posterAvatar,
       createdAt: createdAt ?? this.createdAt,
       distanceKm: distanceKm ?? this.distanceKm,
+      acceptedWorkerIds: acceptedWorkerIds ?? this.acceptedWorkerIds,
     );
   }
 
@@ -171,6 +175,7 @@ class GigJob {
       posterAvatar: data['posterAvatar'] ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       distanceKm: 0.0,
+      acceptedWorkerIds: List<String>.from(data['acceptedWorkerIds'] ?? []),
     );
   }
 }

@@ -131,6 +131,23 @@ class AppState extends ChangeNotifier {
   double _mapCenterLng = 72.9781;
   double get mapCenterLng => _mapCenterLng;
 
+  /// Called by HomeScreen once real GPS is acquired.
+  /// Updates the map center so distance calculations use the real device location.
+  void updateMapCenter(double lat, double lng) {
+    _mapCenterLat = lat;
+    _mapCenterLng = lng;
+    // Recalculate distances with new center
+    _allJobs = _allJobs.map((job) {
+      final distance = const Distance().as(
+        LengthUnit.Kilometer,
+        LatLng(lat, lng),
+        LatLng(job.latitude, job.longitude),
+      );
+      return job.copyWith(distanceKm: distance.toDouble());
+    }).toList();
+    notifyListeners();
+  }
+
   // Selected radius for display: 0=1km, 1=5km, 2=10km, 3=All India
   int _selectedRadiusIndex = 1;
   int get selectedRadiusIndex => _selectedRadiusIndex;
@@ -292,9 +309,14 @@ class AppState extends ChangeNotifier {
 
     if (!_acceptedJobIds.contains(jobId)) {
       _acceptedJobIds.add(jobId);
+      final updatedWorkerIds = List<String>.from(_allJobs[jobIndex].acceptedWorkerIds);
+      if (_firebaseUid != null && !updatedWorkerIds.contains(_firebaseUid)) {
+        updatedWorkerIds.add(_firebaseUid!);
+      }
       _allJobs[jobIndex] = _allJobs[jobIndex].copyWith(
         status: JobStatus.accepted,
         workersAccepted: _allJobs[jobIndex].workersAccepted + 1,
+        acceptedWorkerIds: updatedWorkerIds,
       );
 
       // Add notification
@@ -309,6 +331,12 @@ class AppState extends ChangeNotifier {
       // Save to Firestore
       if (_firebaseUid != null) {
         _saveAcceptedJob(jobId);
+        // Also update the job doc with worker UID
+        _db.collection('jobs').doc(jobId).update({
+          'acceptedWorkerIds': FieldValue.arrayUnion([_firebaseUid]),
+          'status': JobStatus.accepted.name,
+          'workersAccepted': FieldValue.increment(1),
+        }).catchError((e) => debugPrint('[FIRESTORE] Error updating job acceptance: $e'));
       }
 
       notifyListeners();
@@ -437,6 +465,37 @@ class AppState extends ChangeNotifier {
     });
     _saveUserProfileToFirestore();
     notifyListeners();
+  }
+
+  /// Rate a specific worker (called by poster after job completion).
+  /// Updates the worker's rating in Firestore using a transaction.
+  Future<bool> rateWorker(String workerUid, double rating) async {
+    try {
+      await _db.runTransaction((transaction) async {
+        final workerRef = _db.collection('users').doc(workerUid);
+        final workerSnap = await transaction.get(workerRef);
+
+        if (!workerSnap.exists) throw Exception('Worker not found');
+
+        final data = workerSnap.data()!;
+        final currentRating = (data['rating'] as num?)?.toDouble() ?? 0.0;
+        final totalReviews = (data['totalReviews'] as int?) ?? 0;
+
+        final updatedRating = totalReviews == 0
+            ? rating
+            : ((currentRating * totalReviews) + rating) / (totalReviews + 1);
+
+        transaction.update(workerRef, {
+          'rating': double.parse(updatedRating.toStringAsFixed(1)),
+          'totalReviews': totalReviews + 1,
+        });
+      });
+      debugPrint('[FIRESTORE] Rated worker $workerUid: $rating stars');
+      return true;
+    } catch (e) {
+      debugPrint('[FIRESTORE] Error rating worker: $e');
+      return false;
+    }
   }
 
   /// Withdraw from wallet atomically using transaction.
