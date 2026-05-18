@@ -196,14 +196,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildAppBar(AppState state) {
     final user = state.currentUser;
-    final greeting = _getGreeting();
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Row 1: Avatar + Greeting + Toggle
+          // Row 1: Avatar + Name + Toggle
           Row(
             children: [
               // Profile avatar
@@ -216,16 +214,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      greeting,
-                      style: TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                    const SizedBox(height: 1),
                     Text(
                       user.name.isNotEmpty ? user.name : 'Guest',
                       style: TextStyle(

@@ -193,7 +193,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               child: _buildStatCard(
                                 'Accepted',
                                 '$acceptedCount',
-                                '✅',
+                                Icons.check_circle_outline,
                                 AppColors.accentGreen,
                               ),
                             ),
@@ -204,7 +204,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               child: _buildStatCard(
                                 'Posted',
                                 '$postedCount',
-                                '📝',
+                                Icons.assignment_outlined,
                                 AppColors.accentCyan,
                               ),
                             ),
@@ -213,7 +213,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               child: _buildStatCard(
                                 'Active',
                                 '${state.myPostedJobs.where((j) => j.status == JobStatus.accepted || j.status == JobStatus.inProgress).length}',
-                                '🔥',
+                                Icons.local_fire_department_outlined,
                                 AppColors.accentCyan,
                               ),
                             ),
@@ -223,7 +223,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             child: _buildStatCard(
                               'Rating',
                               user.rating > 0 ? '${user.rating}' : 'New',
-                              '⭐',
+                              Icons.star_border_rounded,
                               AppColors.accentYellow,
                             ),
                           ),
@@ -233,7 +233,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               child: _buildStatCard(
                                 'Jobs',
                                 '${acceptedCount + postedCount}',
-                                '📊',
+                                Icons.bar_chart_rounded,
                                 AppColors.accentCyan,
                               ),
                             ),
@@ -344,7 +344,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildStatCard(String label, String value, String emoji, Color color) {
+  Widget _buildStatCard(String label, String value, IconData iconData, Color color) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -354,7 +354,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Column(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 18)),
+          Icon(iconData, color: color, size: 22),
           const SizedBox(height: 6),
           Text(
             value,

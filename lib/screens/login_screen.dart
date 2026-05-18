@@ -163,10 +163,12 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ],
                           ),
-                          child: const Icon(
-                            Icons.location_on_rounded,
-                            color: Colors.white,
-                            size: 32,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(18),
+                            child: Image.asset(
+                              'assets/images/LOGO.jpeg',
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
